@@ -161,7 +161,7 @@ def load_error_file(fd: IO[bytes]) -> Optional[Union[str, Exception]]:
         return "Failed to load task run error"
 
 
-def set_error_file(error_file: str, error: Union[str, Exception]) -> None:
+def set_error_file(error_file: str, error: Union[str, BaseException]) -> None:
     """Write error into error file by path"""
     with open(error_file, "wb") as fd:
         try:
@@ -877,7 +877,7 @@ class TaskInstance(Base, LoggingMixin):
     @provide_session
     def get_previous_dagrun(
         self,
-        state: Optional[str] = None,
+        state: Optional[DagRunState] = None,
         session: Optional[Session] = None,
     ) -> Optional["DagRun"]:
         """The DagRun that ran before this task instance's DagRun.
@@ -890,23 +890,6 @@ class TaskInstance(Base, LoggingMixin):
             return None
 
         dr = self.get_dagrun(session=session)
-
-        # LEGACY: most likely running from unit tests
-        if not dr:
-            # Means that this TaskInstance is NOT being run from a DR, but from a catchup
-            try:
-                # XXX: This uses DAG internals, but as the outer comment
-                # said, the block is only reached for legacy reasons for
-                # development code, so that's OK-ish.
-                schedule = dag.timetable._schedule  # type: ignore
-            except AttributeError:
-                return None
-            dt = pendulum.instance(self.execution_date)
-            return TaskInstance(
-                task=self.task,
-                execution_date=schedule.get_prev(dt),
-            )
-
         dr.dag = dag
 
         # We always ignore schedule in dagrun lookup when `state` is given
@@ -926,7 +909,9 @@ class TaskInstance(Base, LoggingMixin):
 
     @provide_session
     def get_previous_ti(
-        self, state: Optional[str] = None, session: Session = NEW_SESSION
+        self,
+        state: Optional[DagRunState] = None,
+        session: Session = NEW_SESSION,
     ) -> Optional['TaskInstance']:
         """
         The task instance for the task that ran before this task instance.
@@ -969,12 +954,12 @@ class TaskInstance(Base, LoggingMixin):
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.get_previous_ti(state=State.SUCCESS)
+        return self.get_previous_ti(state=DagRunState.SUCCESS)
 
     @provide_session
     def get_previous_execution_date(
         self,
-        state: Optional[str] = None,
+        state: Optional[DagRunState] = None,
         session: Session = NEW_SESSION,
     ) -> Optional[pendulum.DateTime]:
         """
@@ -989,7 +974,7 @@ class TaskInstance(Base, LoggingMixin):
 
     @provide_session
     def get_previous_start_date(
-        self, state: Optional[str] = None, session: Session = NEW_SESSION
+        self, state: Optional[DagRunState] = None, session: Session = NEW_SESSION
     ) -> Optional[pendulum.DateTime]:
         """
         The start date from property previous_ti_success.
@@ -1016,7 +1001,7 @@ class TaskInstance(Base, LoggingMixin):
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.get_previous_start_date(state=State.SUCCESS)
+        return self.get_previous_start_date(state=DagRunState.SUCCESS)
 
     @provide_session
     def are_dependencies_met(self, dep_context=None, session=NEW_SESSION, verbose=False):
@@ -1121,7 +1106,7 @@ class TaskInstance(Base, LoggingMixin):
         return self.state == State.UP_FOR_RETRY and self.next_retry_datetime() < timezone.utcnow()
 
     @provide_session
-    def get_dagrun(self, session: Session = NEW_SESSION):
+    def get_dagrun(self, session: Session = NEW_SESSION) -> "DagRun":
         """
         Returns the DagRun for this TaskInstance
 
@@ -1706,7 +1691,7 @@ class TaskInstance(Base, LoggingMixin):
     @provide_session
     def handle_failure(
         self,
-        error: Union[str, Exception],
+        error: Union[str, BaseException],
         test_mode: Optional[bool] = None,
         force_fail: bool = False,
         error_file: Optional[str] = None,
@@ -1717,7 +1702,7 @@ class TaskInstance(Base, LoggingMixin):
             test_mode = self.test_mode
 
         if error:
-            if isinstance(error, Exception):
+            if isinstance(error, BaseException):
                 self.log.error("Task failed with exception", exc_info=error)
             else:
                 self.log.error("%s", error)
@@ -1831,7 +1816,7 @@ class TaskInstance(Base, LoggingMixin):
 
         @cache  # Prevent multiple database access.
         def _get_previous_dagrun_success() -> Optional["DagRun"]:
-            return self.get_previous_dagrun(state=State.SUCCESS, session=session)
+            return self.get_previous_dagrun(state=DagRunState.SUCCESS, session=session)
 
         def _get_previous_dagrun_data_interval_success() -> Optional["DataInterval"]:
             dagrun = _get_previous_dagrun_success()
@@ -1943,7 +1928,7 @@ class TaskInstance(Base, LoggingMixin):
             'prev_ds_nodash': get_prev_ds_nodash(),
             'prev_execution_date': get_prev_execution_date(),
             'prev_execution_date_success': self.get_previous_execution_date(
-                state=State.SUCCESS,
+                state=DagRunState.SUCCESS,
                 session=session,
             ),
             'prev_start_date_success': get_prev_start_date_success(),

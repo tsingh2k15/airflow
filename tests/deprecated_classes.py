@@ -1343,6 +1343,14 @@ OPERATORS = [
         "airflow.operators.dummy.DummyOperator",
         "airflow.operators.dummy_operator.DummyOperator",
     ),
+    (
+        "airflow.providers.amazon.aws.operators.ec2.EC2StartInstanceOperator",
+        "airflow.providers.amazon.aws.operators.ec2_start_instance.EC2StartInstanceOperator",
+    ),
+    (
+        "airflow.providers.amazon.aws.operators.ec2.EC2StopInstanceOperator",
+        "airflow.providers.amazon.aws.operators.ec2_stop_instance.EC2StopInstanceOperator",
+    ),
 ]
 
 SECRETS = [
@@ -1511,12 +1519,26 @@ SENSORS = [
         'airflow.operators.s3_file_transform_operator.S3FileTransformOperator',
     ),
     (
+        'airflow.providers.amazon.aws.operators.step_function.StepFunctionStartExecutionOperator',
+        'airflow.providers.amazon.aws.operators.step_function_start_execution'
+        '.StepFunctionStartExecutionOperator',
+    ),
+    (
+        'airflow.providers.amazon.aws.operators.step_function.StepFunctionGetExecutionOutputOperator',
+        'airflow.providers.amazon.aws.operators.step_function_get_execution_output'
+        '.StepFunctionGetExecutionOutputOperator',
+    ),
+    (
         'airflow.providers.amazon.aws.sensors.s3_key.S3KeySensor',
         'airflow.sensors.s3_key_sensor.S3KeySensor',
     ),
     (
         'airflow.providers.amazon.aws.sensors.s3_prefix.S3PrefixSensor',
         'airflow.sensors.s3_prefix_sensor.S3PrefixSensor',
+    ),
+    (
+        'airflow.providers.amazon.aws.sensors.step_function.StepFunctionExecutionSensor',
+        'airflow.providers.amazon.aws.sensors.step_function_execution.StepFunctionExecutionSensor',
     ),
     (
         'airflow.sensors.bash.BashSensor',
@@ -1585,6 +1607,10 @@ SENSORS = [
     (
         'airflow.providers.sftp.sensors.sftp.SFTPSensor',
         'airflow.contrib.sensors.sftp_sensor.SFTPSensor',
+    ),
+    (
+        'airflow.providers.amazon.aws.sensors.ec2.EC2InstanceStateSensor',
+        'airflow.providers.amazon.aws.sensors.ec2_instance_state.EC2InstanceStateSensor',
     ),
 ]
 
